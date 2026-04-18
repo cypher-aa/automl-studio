@@ -2,7 +2,7 @@ import { useGetPipelineStatus, useGetPipelineResult, getGetPipelineStatusQueryKe
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Trophy, Target, Hash, BarChart3, Database, Columns, SplitSquareVertical } from "lucide-react";
+import { Trophy, Target, Hash, BarChart3, Database, Columns, SplitSquareVertical, AlertTriangle, FlaskConical } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Cell } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PredictionPanel } from "@/components/prediction-panel";
@@ -120,6 +120,85 @@ export function PipelineResults({ jobId }: PipelineResultsProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Class imbalance warning ── */}
+      {result.classImbalanceWarning && (
+        <div className="flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-300 animate-in fade-in duration-500">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-400" />
+          <span className="font-sans">{result.classImbalanceWarning}</span>
+        </div>
+      )}
+
+      {/* ── Evaluation Metrics ── */}
+      <Card className="bg-card border-border shadow-md">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2 uppercase tracking-wider text-muted-foreground">
+            <FlaskConical className="h-4 w-4 text-primary" />
+            Evaluation Metrics
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {result.problemType === "classification" ? (
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {[
+                  { label: "Accuracy", value: result.bestScore, highlight: !!result.classImbalanceWarning },
+                  { label: "F1 Score", value: result.f1Score ?? null, highlight: !!result.classImbalanceWarning },
+                  { label: "Precision", value: result.precision ?? null, highlight: false },
+                  { label: "Recall", value: result.recall ?? null, highlight: false },
+                ].map(({ label, value, highlight }) => (
+                  <div key={label} className={`p-3 rounded-md border text-center ${highlight ? "border-amber-500/30 bg-amber-500/5" : "border-border bg-muted"}`}>
+                    <div className="text-muted-foreground mb-1 text-xs uppercase tracking-wider">{label}</div>
+                    <div className={`font-mono text-lg ${highlight && label === "F1 Score" ? "text-amber-300 font-bold" : "text-foreground"}`}>
+                      {value !== null ? value.toFixed(4) : "—"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Confusion Matrix */}
+              {result.confusionMatrix && result.confusionMatrix.length <= 6 && (
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Confusion Matrix (Best Model)</p>
+                  <div className="overflow-x-auto">
+                    <table className="text-xs font-mono border-collapse">
+                      <tbody>
+                        {result.confusionMatrix.map((row, ri) => (
+                          <tr key={ri}>
+                            {row.map((cell, ci) => {
+                              const isDiag = ri === ci;
+                              return (
+                                <td key={ci} className={`px-3 py-1.5 border border-border text-center min-w-[48px] ${isDiag ? "bg-primary/20 text-primary font-bold" : "bg-muted text-muted-foreground"}`}>
+                                  {cell}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">Rows = actual, Columns = predicted. Diagonal = correct predictions.</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {[
+                { label: "RMSE", value: result.bestScore },
+                { label: "MAE", value: result.mae ?? null },
+              ].map(({ label, value }) => (
+                <div key={label} className="p-3 rounded-md border border-border bg-muted text-center">
+                  <div className="text-muted-foreground mb-1 text-xs uppercase tracking-wider">{label}</div>
+                  <div className="font-mono text-lg text-foreground">
+                    {value !== null ? value.toFixed(4) : "—"}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Model Comparison Chart */}

@@ -282,6 +282,28 @@ components:
           type: number
         scoreMetric:
           type: string
+        precision:
+          type: ["number", "null"]
+          description: Weighted precision (classification only)
+        recall:
+          type: ["number", "null"]
+          description: Weighted recall (classification only)
+        f1Score:
+          type: ["number", "null"]
+          description: Weighted F1 score (classification only)
+        mae:
+          type: ["number", "null"]
+          description: Mean Absolute Error (regression only)
+        confusionMatrix:
+          type: ["array", "null"]
+          description: Confusion matrix rows (classification only)
+          items:
+            type: array
+            items:
+              type: integer
+        classImbalanceWarning:
+          type: ["string", "null"]
+          description: Warning message if class imbalance is detected
         modelScores:
           type: array
           items:

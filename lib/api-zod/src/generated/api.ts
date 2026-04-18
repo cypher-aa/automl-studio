@@ -72,6 +72,27 @@ export const GetPipelineResultResponse = zod.object({
   bestModel: zod.string(),
   bestScore: zod.number(),
   scoreMetric: zod.string(),
+  precision: zod
+    .number()
+    .nullish()
+    .describe("Weighted precision (classification only)"),
+  recall: zod
+    .number()
+    .nullish()
+    .describe("Weighted recall (classification only)"),
+  f1Score: zod
+    .number()
+    .nullish()
+    .describe("Weighted F1 score (classification only)"),
+  mae: zod.number().nullish().describe("Mean Absolute Error (regression only)"),
+  confusionMatrix: zod
+    .array(zod.array(zod.number()))
+    .nullish()
+    .describe("Confusion matrix rows (classification only)"),
+  classImbalanceWarning: zod
+    .string()
+    .nullish()
+    .describe("Warning message if class imbalance is detected"),
   modelScores: zod.array(
     zod.object({
       modelName: zod.string(),

@@ -25,7 +25,10 @@ from flask_cors import CORS
 import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import accuracy_score, mean_squared_error
+from sklearn.metrics import (
+    accuracy_score, mean_squared_error, mean_absolute_error,
+    precision_score, recall_score, f1_score, confusion_matrix
+)
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, GradientBoostingClassifier, GradientBoostingRegressor
 from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
@@ -300,15 +303,16 @@ def run_pipeline_async(job_id: str, dataset_name: str, target_column: Optional[s
                 start_time = time.time()
                 model.fit(X_train, y_train)
                 training_time = time.time() - start_time
+                y_pred = model.predict(X_test)
 
                 if problem_type == "classification":
-                    score = float(accuracy_score(y_test, model.predict(X_test)))
+                    score = float(accuracy_score(y_test, y_pred))
                     if best_score is None or score > best_score:
                         best_score = score
                         best_model_name = model_name
                         best_model_obj = model
                 else:
-                    rmse = float(np.sqrt(mean_squared_error(y_test, model.predict(X_test))))
+                    rmse = float(np.sqrt(mean_squared_error(y_test, y_pred)))
                     score = rmse
                     if best_score is None or score < best_score:
                         best_score = score
@@ -322,6 +326,45 @@ def run_pipeline_async(job_id: str, dataset_name: str, target_column: Optional[s
                 })
             except Exception:
                 model_scores.append({"modelName": model_name, "score": 0.0, "trainingTime": 0.0})
+
+        update_job(job_id, stage="Computing evaluation metrics...")
+
+        # ── Additional metrics on best model ──
+        best_precision = None
+        best_recall = None
+        best_f1 = None
+        best_mae = None
+        best_confusion = None
+        class_imbalance_warning = None
+
+        if best_model_obj is not None:
+            y_best_pred = best_model_obj.predict(X_test)
+            if problem_type == "classification":
+                try:
+                    best_precision = round(float(precision_score(y_test, y_best_pred, average="weighted", zero_division=0)), 6)
+                    best_recall = round(float(recall_score(y_test, y_best_pred, average="weighted", zero_division=0)), 6)
+                    best_f1 = round(float(f1_score(y_test, y_best_pred, average="weighted", zero_division=0)), 6)
+                    cm = confusion_matrix(y_test, y_best_pred)
+                    best_confusion = cm.tolist()
+                except Exception:
+                    pass
+                # Detect class imbalance on full target column
+                try:
+                    value_counts = pd.Series(y).value_counts(normalize=True)
+                    min_frac = float(value_counts.min())
+                    if min_frac < 0.10:
+                        class_imbalance_warning = (
+                            "Imbalanced dataset detected. Accuracy may be misleading. "
+                            f"Smallest class is only {min_frac*100:.1f}% of data. "
+                            "F1 score is a better indicator of model quality."
+                        )
+                except Exception:
+                    pass
+            else:
+                try:
+                    best_mae = round(float(mean_absolute_error(y_test, y_best_pred)), 6)
+                except Exception:
+                    pass
 
         update_job(job_id, stage="Extracting feature importance...")
 
@@ -371,6 +414,12 @@ def run_pipeline_async(job_id: str, dataset_name: str, target_column: Optional[s
             "bestModel": best_model_name,
             "bestScore": round(best_score, 6) if best_score is not None else 0.0,
             "scoreMetric": metric,
+            "precision": best_precision,
+            "recall": best_recall,
+            "f1Score": best_f1,
+            "mae": best_mae,
+            "confusionMatrix": best_confusion,
+            "classImbalanceWarning": class_imbalance_warning,
             "modelScores": model_scores,
             "featureImportance": feature_importance,
             "featureNames": feature_names,

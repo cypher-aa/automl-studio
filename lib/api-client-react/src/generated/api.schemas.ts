@@ -93,6 +93,36 @@ export interface PipelineResult {
   bestModel: string;
   bestScore: number;
   scoreMetric: string;
+  /**
+   * Weighted precision (classification only)
+   * @nullable
+   */
+  precision?: number | null;
+  /**
+   * Weighted recall (classification only)
+   * @nullable
+   */
+  recall?: number | null;
+  /**
+   * Weighted F1 score (classification only)
+   * @nullable
+   */
+  f1Score?: number | null;
+  /**
+   * Mean Absolute Error (regression only)
+   * @nullable
+   */
+  mae?: number | null;
+  /**
+   * Confusion matrix rows (classification only)
+   * @nullable
+   */
+  confusionMatrix?: number[][] | null;
+  /**
+   * Warning message if class imbalance is detected
+   * @nullable
+   */
+  classImbalanceWarning?: string | null;
   modelScores: ModelScore[];
   featureImportance: FeatureImportance[];
   /** Feature names used during training (for building prediction form) */

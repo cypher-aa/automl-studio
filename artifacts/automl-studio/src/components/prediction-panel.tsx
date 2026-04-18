@@ -77,10 +77,23 @@ export function PredictionPanel({ jobId }: PredictionPanelProps) {
     setErrorMsg(null);
     setPredictionResult(null);
 
-    // Validate: all visible fields must have a value
-    const missing = featureNames.filter((f) => !formValues[f]?.trim());
-    if (missing.length > 0 && featureNames.length <= INITIAL_SHOW) {
-      setErrorMsg(`Please fill in all feature values before predicting.`);
+    // Validate: no empty inputs
+    const missing = featureNames.filter((f) => {
+      const v = formValues[f];
+      return v === undefined || v === "" || v === null;
+    });
+    if (missing.length > 0) {
+      setErrorMsg(`Please fill in all ${missing.length} feature value(s) before predicting.`);
+      return;
+    }
+
+    // Validate: all values must be numeric
+    const invalid = featureNames.filter((f) => {
+      const v = formValues[f];
+      return isNaN(Number(v));
+    });
+    if (invalid.length > 0) {
+      setErrorMsg(`Invalid value(s) in: ${invalid.slice(0, 3).join(", ")}${invalid.length > 3 ? ` and ${invalid.length - 3} more` : ""}. Please enter numbers only.`);
       return;
     }
 
@@ -133,9 +146,12 @@ export function PredictionPanel({ jobId }: PredictionPanelProps) {
                 <Input
                   id={`feature-${feature}`}
                   data-testid={`input-feature-${feature}`}
+                  type="number"
+                  step="any"
                   placeholder="0"
                   value={formValues[feature] ?? ""}
                   onChange={(e) => handleChange(feature, e.target.value)}
+                  onWheel={(e) => (e.target as HTMLInputElement).blur()}
                   className="h-8 text-xs font-mono bg-muted border-border focus:border-primary"
                 />
               </div>
