@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { Trophy, Target, Hash, BarChart3, Database, Columns, SplitSquareVertical } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Cell } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PredictionPanel } from "@/components/prediction-panel";
 
 interface PipelineResultsProps {
   jobId: string;
@@ -232,6 +233,9 @@ export function PipelineResults({ jobId }: PipelineResultsProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Prediction / Explanation / Confidence panels */}
+      <PredictionPanel jobId={jobId} />
     </div>
   );
 }

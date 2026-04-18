@@ -1,0 +1,115 @@
+You are a senior AI engineer. Upgrade my existing AutoML Studio web app (built with Streamlit + scikit-learn) by adding three major features:
+
+1. PREDICTION SYSTEM
+2. EXPLANATION SYSTEM
+3. CONFIDENCE / TRUST SYSTEM
+
+IMPORTANT:
+Do NOT break existing pipeline. Extend current system cleanly.
+
+---
+
+## FEATURE 1: PREDICTION SYSTEM
+
+After the pipeline finishes:
+
+* Load the saved best model (joblib)
+* Dynamically generate input fields based on dataset feature names
+* Allow user to enter values for each feature
+* Convert input to correct data types (numeric if possible)
+* Run model.predict() on input
+* Display prediction clearly
+
+UI:
+Section title: "🔮 Make a Prediction"
+Button: "Predict"
+
+Output:
+"Predicted Value: ___"
+
+---
+
+## FEATURE 2: EXPLANATION SYSTEM
+
+After prediction:
+
+* If model has feature_importances_:
+
+  * Extract top 5 important features
+  * Display them in descending order
+
+* Generate simple explanation:
+  Example:
+  "This prediction is mainly influenced by median_income and location."
+
+UI:
+Section title: "🧠 Why this prediction?"
+
+---
+
+## FEATURE 3: CONFIDENCE SYSTEM
+
+For regression:
+
+* Use RMSE already computed
+* Define:
+  RMSE < 30000 → High confidence
+  RMSE < 70000 → Medium confidence
+  else → Low confidence
+
+Display:
+Section title: "📊 Confidence"
+
+Example output:
+"Confidence: Medium"
+"Model RMSE: 50231"
+
+---
+
+## CODE REQUIREMENTS
+
+* Save model + feature names in joblib file:
+  artifact = {
+  "model": model,
+  "feature_names": list(X.columns)
+  }
+
+* Load artifact for prediction
+
+* Use clean modular functions:
+  predict()
+  explain()
+  compute_confidence()
+
+---
+
+## UI REQUIREMENTS (Streamlit)
+
+Add sections AFTER results:
+
+1. Prediction section
+2. Explanation section
+3. Confidence section
+
+Make UI clean and readable.
+
+---
+
+## ERROR HANDLING
+
+* Handle empty input
+* Handle wrong types
+* Show friendly messages
+
+---
+
+## OUTPUT
+
+Provide:
+
+* Updated Streamlit code
+* Clean integration with existing pipeline
+* Fully working example
+
+Goal:
+Turn this app from model evaluation tool into real decision-making product.

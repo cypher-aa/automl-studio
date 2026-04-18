@@ -22,6 +22,8 @@ import type {
   KaggleDataset,
   PipelineJob,
   PipelineResult,
+  PredictBody,
+  PredictResult,
   RunPipelineBody,
   SearchKaggleDatasetsParams,
 } from "./api.schemas";
@@ -448,6 +450,93 @@ export function useListPipelineJobs<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Run prediction on trained model
+ */
+export const getPredictPipelineUrl = (jobId: string) => {
+  return `/api/pipeline/predict/${jobId}`;
+};
+
+export const predictPipeline = async (
+  jobId: string,
+  predictBody: PredictBody,
+  options?: RequestInit,
+): Promise<PredictResult> => {
+  return customFetch<PredictResult>(getPredictPipelineUrl(jobId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(predictBody),
+  });
+};
+
+export const getPredictPipelineMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof predictPipeline>>,
+    TError,
+    { jobId: string; data: BodyType<PredictBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof predictPipeline>>,
+  TError,
+  { jobId: string; data: BodyType<PredictBody> },
+  TContext
+> => {
+  const mutationKey = ["predictPipeline"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof predictPipeline>>,
+    { jobId: string; data: BodyType<PredictBody> }
+  > = (props) => {
+    const { jobId, data } = props ?? {};
+
+    return predictPipeline(jobId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PredictPipelineMutationResult = NonNullable<
+  Awaited<ReturnType<typeof predictPipeline>>
+>;
+export type PredictPipelineMutationBody = BodyType<PredictBody>;
+export type PredictPipelineMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Run prediction on trained model
+ */
+export const usePredictPipeline = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof predictPipeline>>,
+    TError,
+    { jobId: string; data: BodyType<PredictBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof predictPipeline>>,
+  TError,
+  { jobId: string; data: BodyType<PredictBody> },
+  TContext
+> => {
+  return useMutation(getPredictPipelineMutationOptions(options));
+};
 
 /**
  * @summary Search Kaggle datasets

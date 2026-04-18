@@ -95,9 +95,49 @@ export interface PipelineResult {
   scoreMetric: string;
   modelScores: ModelScore[];
   featureImportance: FeatureImportance[];
+  /** Feature names used during training (for building prediction form) */
+  featureNames: string[];
   datasetSummary: DatasetSummary;
   /** @nullable */
   modelPath?: string | null;
+}
+
+/**
+ * Map of feature name to string value entered by user
+ */
+export type PredictBodyFeatures = { [key: string]: string };
+
+export interface PredictBody {
+  /** Map of feature name to string value entered by user */
+  features: PredictBodyFeatures;
+}
+
+export type PredictResultProblemType =
+  (typeof PredictResultProblemType)[keyof typeof PredictResultProblemType];
+
+export const PredictResultProblemType = {
+  classification: "classification",
+  regression: "regression",
+} as const;
+
+export interface PredictResult {
+  /** The model's predicted output as a string */
+  predictedValue: string;
+  /** Top 5 most important features */
+  topFeatures: FeatureImportance[];
+  /** Human-readable explanation of prediction */
+  explanation: string;
+  /**
+   * High, Medium, or Low confidence level
+   * @nullable
+   */
+  confidence?: string | null;
+  /**
+   * Metric value used to compute confidence
+   * @nullable
+   */
+  confidenceDetail?: string | null;
+  problemType: PredictResultProblemType;
 }
 
 export interface KaggleDataset {

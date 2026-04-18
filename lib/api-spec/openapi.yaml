@@ -132,6 +132,49 @@ paths:
                 items:
                   $ref: "#/components/schemas/PipelineJob"
 
+  /pipeline/predict/{jobId}:
+    post:
+      operationId: predictPipeline
+      tags: [pipeline]
+      summary: Run prediction on trained model
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PredictBody"
+      responses:
+        "200":
+          description: Prediction result with explanation and confidence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictResult"
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "400":
+          description: Job not complete or invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Prediction error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /kaggle/search:
     get:
       operationId: searchKaggleDatasets
@@ -247,6 +290,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FeatureImportance"
+        featureNames:
+          type: array
+          items:
+            type: string
+          description: Feature names used during training (for building prediction form)
         datasetSummary:
           $ref: "#/components/schemas/DatasetSummary"
         modelPath:
@@ -261,7 +309,48 @@ components:
         - scoreMetric
         - modelScores
         - featureImportance
+        - featureNames
         - datasetSummary
+
+    PredictBody:
+      type: object
+      properties:
+        features:
+          type: object
+          description: Map of feature name to string value entered by user
+          additionalProperties:
+            type: string
+      required:
+        - features
+
+    PredictResult:
+      type: object
+      properties:
+        predictedValue:
+          type: string
+          description: The model's predicted output as a string
+        topFeatures:
+          type: array
+          items:
+            $ref: "#/components/schemas/FeatureImportance"
+          description: Top 5 most important features
+        explanation:
+          type: string
+          description: Human-readable explanation of prediction
+        confidence:
+          type: ["string", "null"]
+          description: High, Medium, or Low confidence level
+        confidenceDetail:
+          type: ["string", "null"]
+          description: Metric value used to compute confidence
+        problemType:
+          type: string
+          enum: [classification, regression]
+      required:
+        - predictedValue
+        - topFeatures
+        - explanation
+        - problemType
 
     ModelScore:
       type: object

@@ -3,6 +3,8 @@ import {
   RunPipelineBody,
   GetPipelineStatusParams,
   GetPipelineResultParams,
+  PredictPipelineParams,
+  PredictPipelineBody,
   SearchKaggleDatasetsQueryParams,
 } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
@@ -82,6 +84,34 @@ router.get("/pipeline/jobs", async (_req, res): Promise<void> => {
     res.status(mlRes.status).json(data);
   } catch (err) {
     logger.error({ err }, "ML service error on /pipeline/jobs");
+    res.status(500).json({ error: "ML service is not available." });
+  }
+});
+
+router.post("/pipeline/predict/:jobId", async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.jobId) ? req.params.jobId[0] : req.params.jobId;
+  const params = PredictPipelineParams.safeParse({ jobId: rawId });
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const body = PredictPipelineBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  try {
+    const mlRes = await proxyToML(
+      `/pipeline/predict/${params.data.jobId}`,
+      "POST",
+      body.data
+    );
+    const data = await mlRes.json();
+    res.status(mlRes.status).json(data);
+  } catch (err) {
+    req.log.error({ err }, "ML service error on /pipeline/predict");
     res.status(500).json({ error: "ML service is not available." });
   }
 });

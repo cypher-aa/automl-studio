@@ -85,6 +85,11 @@ export const GetPipelineResultResponse = zod.object({
       importance: zod.number(),
     }),
   ),
+  featureNames: zod
+    .array(zod.string())
+    .describe(
+      "Feature names used during training (for building prediction form)",
+    ),
   datasetSummary: zod.object({
     rows: zod.number(),
     columns: zod.number(),
@@ -111,6 +116,45 @@ export const ListPipelineJobsResponseItem = zod.object({
   error: zod.string().nullish(),
 });
 export const ListPipelineJobsResponse = zod.array(ListPipelineJobsResponseItem);
+
+/**
+ * @summary Run prediction on trained model
+ */
+export const PredictPipelineParams = zod.object({
+  jobId: zod.coerce.string(),
+});
+
+export const PredictPipelineBody = zod.object({
+  features: zod
+    .record(zod.string(), zod.string())
+    .describe("Map of feature name to string value entered by user"),
+});
+
+export const PredictPipelineResponse = zod.object({
+  predictedValue: zod
+    .string()
+    .describe("The model's predicted output as a string"),
+  topFeatures: zod
+    .array(
+      zod.object({
+        feature: zod.string(),
+        importance: zod.number(),
+      }),
+    )
+    .describe("Top 5 most important features"),
+  explanation: zod
+    .string()
+    .describe("Human-readable explanation of prediction"),
+  confidence: zod
+    .string()
+    .nullish()
+    .describe("High, Medium, or Low confidence level"),
+  confidenceDetail: zod
+    .string()
+    .nullish()
+    .describe("Metric value used to compute confidence"),
+  problemType: zod.enum(["classification", "regression"]),
+});
 
 /**
  * @summary Search Kaggle datasets
