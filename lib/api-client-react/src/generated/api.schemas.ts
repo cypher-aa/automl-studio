@@ -8,3 +8,113 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface RunPipelineBody {
+  /** Kaggle dataset identifier (e.g. "titanic" or "username/dataset-name") */
+  datasetName: string;
+  /**
+   * Optional target column name. Auto-detected if not provided.
+   * @nullable
+   */
+  targetColumn?: string | null;
+  /**
+   * Optional Kaggle username for API auth
+   * @nullable
+   */
+  kaggleUsername?: string | null;
+  /**
+   * Optional Kaggle API key for auth
+   * @nullable
+   */
+  kaggleKey?: string | null;
+}
+
+export type PipelineJobStatus =
+  (typeof PipelineJobStatus)[keyof typeof PipelineJobStatus];
+
+export const PipelineJobStatus = {
+  pending: "pending",
+  running: "running",
+  completed: "completed",
+  failed: "failed",
+} as const;
+
+export interface PipelineJob {
+  jobId: string;
+  status: PipelineJobStatus;
+  /**
+   * Current stage description
+   * @nullable
+   */
+  stage?: string | null;
+  datasetName: string;
+  /** @nullable */
+  targetColumn?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** @nullable */
+  error?: string | null;
+}
+
+export type PipelineResultProblemType =
+  (typeof PipelineResultProblemType)[keyof typeof PipelineResultProblemType];
+
+export const PipelineResultProblemType = {
+  classification: "classification",
+  regression: "regression",
+} as const;
+
+export interface ModelScore {
+  modelName: string;
+  score: number;
+  trainingTime: number;
+}
+
+export interface FeatureImportance {
+  feature: string;
+  importance: number;
+}
+
+export interface DatasetSummary {
+  rows: number;
+  columns: number;
+  columnNames: string[];
+  missingValues: number;
+  duplicatesRemoved: number;
+  categoricalColumns: string[];
+  numericColumns: string[];
+}
+
+export interface PipelineResult {
+  jobId: string;
+  datasetName: string;
+  targetColumn: string;
+  problemType: PipelineResultProblemType;
+  bestModel: string;
+  bestScore: number;
+  scoreMetric: string;
+  modelScores: ModelScore[];
+  featureImportance: FeatureImportance[];
+  datasetSummary: DatasetSummary;
+  /** @nullable */
+  modelPath?: string | null;
+}
+
+export interface KaggleDataset {
+  ref: string;
+  title: string;
+  /** @nullable */
+  size?: string | null;
+  /** @nullable */
+  lastUpdated?: string | null;
+  /** @nullable */
+  downloadCount?: number | null;
+}
+
+export interface ErrorResponse {
+  error: string;
+}
+
+export type SearchKaggleDatasetsParams = {
+  query: string;
+};

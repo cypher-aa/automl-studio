@@ -14,3 +14,118 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Start the AutoML pipeline for a given Kaggle dataset
+ * @summary Run AutoML pipeline
+ */
+export const RunPipelineBody = zod.object({
+  datasetName: zod
+    .string()
+    .describe(
+      'Kaggle dataset identifier (e.g. \"titanic\" or \"username\/dataset-name\")',
+    ),
+  targetColumn: zod
+    .string()
+    .nullish()
+    .describe("Optional target column name. Auto-detected if not provided."),
+  kaggleUsername: zod
+    .string()
+    .nullish()
+    .describe("Optional Kaggle username for API auth"),
+  kaggleKey: zod
+    .string()
+    .nullish()
+    .describe("Optional Kaggle API key for auth"),
+});
+
+/**
+ * @summary Get pipeline job status
+ */
+export const GetPipelineStatusParams = zod.object({
+  jobId: zod.coerce.string(),
+});
+
+export const GetPipelineStatusResponse = zod.object({
+  jobId: zod.string(),
+  status: zod.enum(["pending", "running", "completed", "failed"]),
+  stage: zod.string().nullish().describe("Current stage description"),
+  datasetName: zod.string(),
+  targetColumn: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  error: zod.string().nullish(),
+});
+
+/**
+ * @summary Get pipeline job result
+ */
+export const GetPipelineResultParams = zod.object({
+  jobId: zod.coerce.string(),
+});
+
+export const GetPipelineResultResponse = zod.object({
+  jobId: zod.string(),
+  datasetName: zod.string(),
+  targetColumn: zod.string(),
+  problemType: zod.enum(["classification", "regression"]),
+  bestModel: zod.string(),
+  bestScore: zod.number(),
+  scoreMetric: zod.string(),
+  modelScores: zod.array(
+    zod.object({
+      modelName: zod.string(),
+      score: zod.number(),
+      trainingTime: zod.number(),
+    }),
+  ),
+  featureImportance: zod.array(
+    zod.object({
+      feature: zod.string(),
+      importance: zod.number(),
+    }),
+  ),
+  datasetSummary: zod.object({
+    rows: zod.number(),
+    columns: zod.number(),
+    columnNames: zod.array(zod.string()),
+    missingValues: zod.number(),
+    duplicatesRemoved: zod.number(),
+    categoricalColumns: zod.array(zod.string()),
+    numericColumns: zod.array(zod.string()),
+  }),
+  modelPath: zod.string().nullish(),
+});
+
+/**
+ * @summary List recent pipeline jobs
+ */
+export const ListPipelineJobsResponseItem = zod.object({
+  jobId: zod.string(),
+  status: zod.enum(["pending", "running", "completed", "failed"]),
+  stage: zod.string().nullish().describe("Current stage description"),
+  datasetName: zod.string(),
+  targetColumn: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  error: zod.string().nullish(),
+});
+export const ListPipelineJobsResponse = zod.array(ListPipelineJobsResponseItem);
+
+/**
+ * @summary Search Kaggle datasets
+ */
+export const SearchKaggleDatasetsQueryParams = zod.object({
+  query: zod.coerce.string(),
+});
+
+export const SearchKaggleDatasetsResponseItem = zod.object({
+  ref: zod.string(),
+  title: zod.string(),
+  size: zod.string().nullish(),
+  lastUpdated: zod.string().nullish(),
+  downloadCount: zod.number().nullish(),
+});
+export const SearchKaggleDatasetsResponse = zod.array(
+  SearchKaggleDatasetsResponseItem,
+);

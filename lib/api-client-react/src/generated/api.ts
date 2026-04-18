@@ -5,18 +5,29 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  ErrorResponse,
+  HealthStatus,
+  KaggleDataset,
+  PipelineJob,
+  PipelineResult,
+  RunPipelineBody,
+  SearchKaggleDatasetsParams,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -92,6 +103,444 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Start the AutoML pipeline for a given Kaggle dataset
+ * @summary Run AutoML pipeline
+ */
+export const getRunPipelineUrl = () => {
+  return `/api/pipeline/run`;
+};
+
+export const runPipeline = async (
+  runPipelineBody: RunPipelineBody,
+  options?: RequestInit,
+): Promise<PipelineJob> => {
+  return customFetch<PipelineJob>(getRunPipelineUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(runPipelineBody),
+  });
+};
+
+export const getRunPipelineMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof runPipeline>>,
+    TError,
+    { data: BodyType<RunPipelineBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof runPipeline>>,
+  TError,
+  { data: BodyType<RunPipelineBody> },
+  TContext
+> => {
+  const mutationKey = ["runPipeline"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof runPipeline>>,
+    { data: BodyType<RunPipelineBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return runPipeline(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RunPipelineMutationResult = NonNullable<
+  Awaited<ReturnType<typeof runPipeline>>
+>;
+export type RunPipelineMutationBody = BodyType<RunPipelineBody>;
+export type RunPipelineMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Run AutoML pipeline
+ */
+export const useRunPipeline = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof runPipeline>>,
+    TError,
+    { data: BodyType<RunPipelineBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof runPipeline>>,
+  TError,
+  { data: BodyType<RunPipelineBody> },
+  TContext
+> => {
+  return useMutation(getRunPipelineMutationOptions(options));
+};
+
+/**
+ * @summary Get pipeline job status
+ */
+export const getGetPipelineStatusUrl = (jobId: string) => {
+  return `/api/pipeline/status/${jobId}`;
+};
+
+export const getPipelineStatus = async (
+  jobId: string,
+  options?: RequestInit,
+): Promise<PipelineJob> => {
+  return customFetch<PipelineJob>(getGetPipelineStatusUrl(jobId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPipelineStatusQueryKey = (jobId: string) => {
+  return [`/api/pipeline/status/${jobId}`] as const;
+};
+
+export const getGetPipelineStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPipelineStatus>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  jobId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPipelineStatus>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPipelineStatusQueryKey(jobId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPipelineStatus>>
+  > = ({ signal }) => getPipelineStatus(jobId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!jobId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPipelineStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPipelineStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPipelineStatus>>
+>;
+export type GetPipelineStatusQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get pipeline job status
+ */
+
+export function useGetPipelineStatus<
+  TData = Awaited<ReturnType<typeof getPipelineStatus>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  jobId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPipelineStatus>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPipelineStatusQueryOptions(jobId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get pipeline job result
+ */
+export const getGetPipelineResultUrl = (jobId: string) => {
+  return `/api/pipeline/result/${jobId}`;
+};
+
+export const getPipelineResult = async (
+  jobId: string,
+  options?: RequestInit,
+): Promise<PipelineResult> => {
+  return customFetch<PipelineResult>(getGetPipelineResultUrl(jobId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPipelineResultQueryKey = (jobId: string) => {
+  return [`/api/pipeline/result/${jobId}`] as const;
+};
+
+export const getGetPipelineResultQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPipelineResult>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  jobId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPipelineResult>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPipelineResultQueryKey(jobId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPipelineResult>>
+  > = ({ signal }) => getPipelineResult(jobId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!jobId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPipelineResult>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPipelineResultQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPipelineResult>>
+>;
+export type GetPipelineResultQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get pipeline job result
+ */
+
+export function useGetPipelineResult<
+  TData = Awaited<ReturnType<typeof getPipelineResult>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  jobId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPipelineResult>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPipelineResultQueryOptions(jobId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List recent pipeline jobs
+ */
+export const getListPipelineJobsUrl = () => {
+  return `/api/pipeline/jobs`;
+};
+
+export const listPipelineJobs = async (
+  options?: RequestInit,
+): Promise<PipelineJob[]> => {
+  return customFetch<PipelineJob[]>(getListPipelineJobsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPipelineJobsQueryKey = () => {
+  return [`/api/pipeline/jobs`] as const;
+};
+
+export const getListPipelineJobsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPipelineJobs>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPipelineJobs>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPipelineJobsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPipelineJobs>>
+  > = ({ signal }) => listPipelineJobs({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPipelineJobs>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPipelineJobsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPipelineJobs>>
+>;
+export type ListPipelineJobsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List recent pipeline jobs
+ */
+
+export function useListPipelineJobs<
+  TData = Awaited<ReturnType<typeof listPipelineJobs>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPipelineJobs>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPipelineJobsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Search Kaggle datasets
+ */
+export const getSearchKaggleDatasetsUrl = (
+  params: SearchKaggleDatasetsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/kaggle/search?${stringifiedParams}`
+    : `/api/kaggle/search`;
+};
+
+export const searchKaggleDatasets = async (
+  params: SearchKaggleDatasetsParams,
+  options?: RequestInit,
+): Promise<KaggleDataset[]> => {
+  return customFetch<KaggleDataset[]>(getSearchKaggleDatasetsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getSearchKaggleDatasetsQueryKey = (
+  params?: SearchKaggleDatasetsParams,
+) => {
+  return [`/api/kaggle/search`, ...(params ? [params] : [])] as const;
+};
+
+export const getSearchKaggleDatasetsQueryOptions = <
+  TData = Awaited<ReturnType<typeof searchKaggleDatasets>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params: SearchKaggleDatasetsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof searchKaggleDatasets>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getSearchKaggleDatasetsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof searchKaggleDatasets>>
+  > = ({ signal }) =>
+    searchKaggleDatasets(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof searchKaggleDatasets>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type SearchKaggleDatasetsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof searchKaggleDatasets>>
+>;
+export type SearchKaggleDatasetsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Search Kaggle datasets
+ */
+
+export function useSearchKaggleDatasets<
+  TData = Awaited<ReturnType<typeof searchKaggleDatasets>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params: SearchKaggleDatasetsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof searchKaggleDatasets>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getSearchKaggleDatasetsQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

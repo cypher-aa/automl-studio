@@ -10,6 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: pipeline
+    description: AutoML pipeline operations
+  - name: kaggle
+    description: Kaggle dataset operations
 paths:
   /healthz:
     get:
@@ -24,6 +28,143 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /pipeline/run:
+    post:
+      operationId: runPipeline
+      tags: [pipeline]
+      summary: Run AutoML pipeline
+      description: Start the AutoML pipeline for a given Kaggle dataset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RunPipelineBody"
+      responses:
+        "202":
+          description: Pipeline started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineJob"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pipeline/status/{jobId}:
+    get:
+      operationId: getPipelineStatus
+      tags: [pipeline]
+      summary: Get pipeline job status
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Job status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineJob"
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pipeline/result/{jobId}:
+    get:
+      operationId: getPipelineResult
+      tags: [pipeline]
+      summary: Get pipeline job result
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Pipeline result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineResult"
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "400":
+          description: Job not complete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pipeline/jobs:
+    get:
+      operationId: listPipelineJobs
+      tags: [pipeline]
+      summary: List recent pipeline jobs
+      responses:
+        "200":
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PipelineJob"
+
+  /kaggle/search:
+    get:
+      operationId: searchKaggleDatasets
+      tags: [kaggle]
+      summary: Search Kaggle datasets
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of matching datasets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/KaggleDataset"
+        "400":
+          description: Invalid query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Kaggle API error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +175,172 @@ components:
       required:
         - status
 
+    RunPipelineBody:
+      type: object
+      properties:
+        datasetName:
+          type: string
+          description: Kaggle dataset identifier (e.g. "titanic" or "username/dataset-name")
+        targetColumn:
+          type: ["string", "null"]
+          description: Optional target column name. Auto-detected if not provided.
+        kaggleUsername:
+          type: ["string", "null"]
+          description: Optional Kaggle username for API auth
+        kaggleKey:
+          type: ["string", "null"]
+          description: Optional Kaggle API key for auth
+      required:
+        - datasetName
+
+    PipelineJob:
+      type: object
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        stage:
+          type: ["string", "null"]
+          description: Current stage description
+        datasetName:
+          type: string
+        targetColumn:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        error:
+          type: ["string", "null"]
+      required:
+        - jobId
+        - status
+        - datasetName
+        - createdAt
+        - updatedAt
+
+    PipelineResult:
+      type: object
+      properties:
+        jobId:
+          type: string
+        datasetName:
+          type: string
+        targetColumn:
+          type: string
+        problemType:
+          type: string
+          enum: [classification, regression]
+        bestModel:
+          type: string
+        bestScore:
+          type: number
+        scoreMetric:
+          type: string
+        modelScores:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelScore"
+        featureImportance:
+          type: array
+          items:
+            $ref: "#/components/schemas/FeatureImportance"
+        datasetSummary:
+          $ref: "#/components/schemas/DatasetSummary"
+        modelPath:
+          type: ["string", "null"]
+      required:
+        - jobId
+        - datasetName
+        - targetColumn
+        - problemType
+        - bestModel
+        - bestScore
+        - scoreMetric
+        - modelScores
+        - featureImportance
+        - datasetSummary
+
+    ModelScore:
+      type: object
+      properties:
+        modelName:
+          type: string
+        score:
+          type: number
+        trainingTime:
+          type: number
+      required:
+        - modelName
+        - score
+        - trainingTime
+
+    FeatureImportance:
+      type: object
+      properties:
+        feature:
+          type: string
+        importance:
+          type: number
+      required:
+        - feature
+        - importance
+
+    DatasetSummary:
+      type: object
+      properties:
+        rows:
+          type: integer
+        columns:
+          type: integer
+        columnNames:
+          type: array
+          items:
+            type: string
+        missingValues:
+          type: integer
+        duplicatesRemoved:
+          type: integer
+        categoricalColumns:
+          type: array
+          items:
+            type: string
+        numericColumns:
+          type: array
+          items:
+            type: string
+      required:
+        - rows
+        - columns
+        - columnNames
+        - missingValues
+        - duplicatesRemoved
+        - categoricalColumns
+        - numericColumns
+
+    KaggleDataset:
+      type: object
+      properties:
+        ref:
+          type: string
+        title:
+          type: string
+        size:
+          type: ["string", "null"]
+        lastUpdated:
+          type: ["string", "null"]
+        downloadCount:
+          type: ["integer", "null"]
+      required:
+        - ref
+        - title
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
